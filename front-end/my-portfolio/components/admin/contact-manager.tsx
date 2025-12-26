@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { api } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Trash2, Mail, CheckCircle2 } from "lucide-react"
@@ -15,26 +16,35 @@ interface ContactMessage {
   created_at: string
 }
 
-export function ContactManager() {
-  const [messages, setMessages] = useState<ContactMessage[]>([
-    {
-      id: 1,
-      name: "Jane Doe",
-      email: "jane@example.com",
-      subject: "Project Inquiry",
-      message: "I'd like to discuss a potential project...",
-      read: false,
-      created_at: "2024-01-15",
-    },
-  ])
+  const [messages, setMessages] = useState<ContactMessage[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const handleMarkRead = (id: number) => {
-    setMessages(messages.map((msg) => (msg.id === id ? { ...msg, read: true } : msg)))
-  }
+  useEffect(() => {
+    api.getContactMessages()
+      .then((data) => {
+        let arr = [];
+        if (Array.isArray(data)) {
+          arr = data;
+        } else if (data && Array.isArray(data.results)) {
+          arr = data.results;
+        }
+        setMessages(arr);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
-  const handleDelete = (id: number) => {
-    setMessages(messages.filter((msg) => msg.id !== id))
-  }
+  const handleMarkRead = async (id: number) => {
+    await api.markContactRead(id);
+    setMessages(messages.map((msg) => (msg.id === id ? { ...msg, read: true } : msg)));
+  };
+
+  const handleDelete = async (id: number) => {
+    await api.deleteContactMessage(id);
+    setMessages(messages.filter((msg) => msg.id !== id));
+  };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="space-y-6">

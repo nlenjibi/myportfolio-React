@@ -1,37 +1,63 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { api } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-export function IntroManager() {
   const [formData, setFormData] = useState({
-    name: "John Anderson",
-    tagline: "Full Stack Developer",
-    description:
-      "I build accessible, pixel-perfect digital experiences for the web. Passionate about crafting thoughtful design with robust engineering.",
+    name: "",
+    tagline: "",
+    description: "",
     profile_image: "",
     resume_url: "",
-    github_url: "https://github.com",
-    linkedin_url: "https://linkedin.com",
-    twitter_url: "https://twitter.com",
+    github_url: "",
+    linkedin_url: "",
+    twitter_url: "",
   })
+  const [introId, setIntroId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.getIntro()
+      .then((data) => {
+        let arr = [];
+        if (Array.isArray(data) && data.length > 0) {
+          arr = data;
+        } else if (data && Array.isArray(data.results) && data.results.length > 0) {
+          arr = data.results;
+        }
+        if (arr.length > 0) {
+          setFormData(arr[0]);
+          setIntroId(arr[0].id);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log("[v0] Intro updated:", formData)
-    alert("Intro section updated successfully!")
-  }
+    e.preventDefault();
+    if (introId) {
+      await api.updateIntro(introId, formData);
+    } else {
+      const created = await api.createIntro(formData);
+      setIntroId(created.id);
+    }
+    alert("Intro section updated successfully!");
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
-    })
-  }
+    });
+  };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="space-y-6">
