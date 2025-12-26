@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { api } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -9,17 +10,40 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export function AboutManager() {
   const [formData, setFormData] = useState({
-    title: "Crafting Digital Experiences",
-    description: `I'm a developer passionate about crafting accessible, pixel-perfect user interfaces that blend thoughtful design with robust engineering. My favorite work lies at the intersection of design and development, creating experiences that not only look great but are meticulously built for performance and usability.`,
+    title: "",
+    description: "",
     image: "",
-    email: "john@example.com",
-    phone: "+1 (555) 123-4567",
-    location: "San Francisco, CA",
+    email: "",
+    phone: "",
+    location: "",
   })
+  const [loading, setLoading] = useState(true)
+  const [aboutId, setAboutId] = useState<number | null>(null)
+
+  useEffect(() => {
+    api.getAbout().then((data) => {
+      let aboutArr = [];
+      if (Array.isArray(data) && data.length > 0) {
+        aboutArr = data;
+      } else if (data && Array.isArray(data.results) && data.results.length > 0) {
+        aboutArr = data.results;
+      }
+      if (aboutArr.length > 0) {
+        setFormData(aboutArr[0]);
+        setAboutId(aboutArr[0].id);
+      }
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("[v0] About updated:", formData)
+    if (aboutId) {
+      await api.updateAbout(aboutId, formData)
+    } else {
+      const created = await api.createAbout(formData)
+      setAboutId(created.id)
+    }
     alert("About section updated successfully!")
   }
 
@@ -29,6 +53,8 @@ export function AboutManager() {
       [e.target.name]: e.target.value,
     })
   }
+
+  if (loading) return <div>Loading...</div>
 
   return (
     <div className="space-y-6">

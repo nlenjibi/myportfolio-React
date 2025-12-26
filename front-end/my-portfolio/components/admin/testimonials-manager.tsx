@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { api } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -17,18 +18,7 @@ interface Testimonial {
   rating: number
 }
 
-export function TestimonialsManager() {
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      position: "CEO",
-      company: "TechStart Inc.",
-      content: "Working with John was an absolute pleasure.",
-      rating: 5,
-    },
-  ])
-
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [formData, setFormData] = useState({
     name: "",
     position: "",
@@ -36,37 +26,55 @@ export function TestimonialsManager() {
     content: "",
     rating: 5,
   })
-
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  useEffect(() => {
+    api.getTestimonials()
+      .then((data) => {
+        let arr = [];
+        if (Array.isArray(data)) {
+          arr = data;
+        } else if (data && Array.isArray(data.results)) {
+          arr = data.results;
+        }
+        setTestimonials(arr);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (editingId) {
-      setTestimonials(testimonials.map((item) => (item.id === editingId ? { ...item, ...formData } : item)))
-      setEditingId(null)
+      const updated = await api.updateTestimonial(editingId, formData);
+      setTestimonials(testimonials.map((item) => (item.id === editingId ? updated : item)));
+      setEditingId(null);
     } else {
-      setTestimonials([...testimonials, { id: Date.now(), ...formData }])
+      const created = await api.createTestimonial(formData);
+      setTestimonials([...testimonials, created]);
     }
-
-    setFormData({ name: "", position: "", company: "", content: "", rating: 5 })
-  }
+    setFormData({ name: "", position: "", company: "", content: "", rating: 5 });
+  };
 
   const handleEdit = (item: Testimonial) => {
-    setFormData(item)
-    setEditingId(item.id)
-  }
+    setFormData(item);
+    setEditingId(item.id);
+  };
 
-  const handleDelete = (id: number) => {
-    setTestimonials(testimonials.filter((item) => item.id !== id))
-  }
+  const handleDelete = async (id: number) => {
+    await api.deleteTestimonial(id);
+    setTestimonials(testimonials.filter((item) => item.id !== id));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
-    })
-  }
+    });
+  };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="space-y-6">

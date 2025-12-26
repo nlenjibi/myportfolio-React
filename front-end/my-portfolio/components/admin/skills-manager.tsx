@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { api } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,11 +16,8 @@ interface Skill {
 }
 
 export function SkillsManager() {
-  const [skills, setSkills] = useState<Skill[]>([
-    { id: 1, name: "React", category: "Frontend", proficiency: 95 },
-    { id: 2, name: "TypeScript", category: "Frontend", proficiency: 90 },
-    { id: 3, name: "Node.js", category: "Backend", proficiency: 85 },
-  ])
+  const [skills, setSkills] = useState<Skill[]>([])
+  const [loading, setLoading] = useState(true)
 
   const [formData, setFormData] = useState({
     name: "",
@@ -29,16 +27,33 @@ export function SkillsManager() {
 
   const [editingId, setEditingId] = useState<number | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  useEffect(() => {
+    api.getSkills()
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setSkills(data)
+        } else if (data && Array.isArray(data.results)) {
+          setSkills(data.results)
+        } else {
+          setSkills([])
+        }
+      })
+      .catch(() => setSkills([]))
+      .finally(() => setLoading(false))
+  }, [])
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     if (editingId) {
-      setSkills(skills.map((skill) => (skill.id === editingId ? { ...skill, ...formData } : skill)))
+      // Update skill
+      const updated = await api.updateSkill(editingId, formData)
+      setSkills(skills.map((skill) => (skill.id === editingId ? updated : skill)))
       setEditingId(null)
     } else {
-      setSkills([...skills, { id: Date.now(), ...formData }])
+      // Create skill
+      const created = await api.createSkill(formData)
+      setSkills([...skills, created])
     }
-
     setFormData({ name: "", category: "", proficiency: 50 })
   }
 
@@ -51,7 +66,8 @@ export function SkillsManager() {
     setEditingId(skill.id)
   }
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
+    await api.deleteSkill(id)
     setSkills(skills.filter((skill) => skill.id !== id))
   }
 
@@ -60,6 +76,10 @@ export function SkillsManager() {
       ...formData,
       [e.target.name]: e.target.value,
     })
+  }
+
+  if (loading) {
+    return <div>Loading...</div>
   }
 
   return (

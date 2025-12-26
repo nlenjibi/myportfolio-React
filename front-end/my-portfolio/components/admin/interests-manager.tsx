@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { api } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -14,47 +15,60 @@ interface Interest {
   description: string
 }
 
-export function InterestsManager() {
-  const [interests, setInterests] = useState<Interest[]>([
-    { id: 1, title: "Photography", description: "Capturing moments and exploring visual storytelling" },
-    { id: 2, title: "Music Production", description: "Creating electronic music and experimenting with sound design" },
-  ])
-
+  const [interests, setInterests] = useState<Interest[]>([])
   const [formData, setFormData] = useState({
     title: "",
     description: "",
   })
-
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  useEffect(() => {
+    api.getInterests()
+      .then((data) => {
+        let arr = [];
+        if (Array.isArray(data)) {
+          arr = data;
+        } else if (data && Array.isArray(data.results)) {
+          arr = data.results;
+        }
+        setInterests(arr);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (editingId) {
-      setInterests(interests.map((interest) => (interest.id === editingId ? { ...interest, ...formData } : interest)))
-      setEditingId(null)
+      const updated = await api.updateInterest(editingId, formData);
+      setInterests(interests.map((interest) => (interest.id === editingId ? updated : interest)));
+      setEditingId(null);
     } else {
-      setInterests([...interests, { id: Date.now(), ...formData }])
+      const created = await api.createInterest(formData);
+      setInterests([...interests, created]);
     }
-
-    setFormData({ title: "", description: "" })
-  }
+    setFormData({ title: "", description: "" });
+  };
 
   const handleEdit = (interest: Interest) => {
-    setFormData(interest)
-    setEditingId(interest.id)
-  }
+    setFormData(interest);
+    setEditingId(interest.id);
+  };
 
-  const handleDelete = (id: number) => {
-    setInterests(interests.filter((interest) => interest.id !== id))
-  }
+  const handleDelete = async (id: number) => {
+    await api.deleteInterest(id);
+    setInterests(interests.filter((interest) => interest.id !== id));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
-    })
-  }
+    });
+  };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="space-y-6">

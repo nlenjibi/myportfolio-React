@@ -68,8 +68,10 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
 // API methods for each module
 export const api = {
   // Auth
+
+  // Auth (token)
   login: (username: string, password: string) =>
-    apiRequest("/api/auth/login/", {
+    apiRequest("/api/token-auth/", {
       method: "POST",
       body: JSON.stringify({ username, password }),
       requiresAuth: false,
@@ -77,22 +79,41 @@ export const api = {
 
   // Intro
   getIntro: () => apiRequest("/api/intro/", { requiresAuth: false }),
-  updateIntro: (data: any) =>
+  createIntro: (data: any) =>
     apiRequest("/api/intro/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateIntro: (id: number, data: any) =>
+    apiRequest(`/api/intro/${id}/`, {
       method: "PUT",
       body: JSON.stringify(data),
+    }),
+  deleteIntro: (id: number) =>
+    apiRequest(`/api/intro/${id}/`, {
+      method: "DELETE",
     }),
 
   // About
   getAbout: () => apiRequest("/api/about/", { requiresAuth: false }),
-  updateAbout: (data: any) =>
+  createAbout: (data: any) =>
     apiRequest("/api/about/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateAbout: (id: number, data: any) =>
+    apiRequest(`/api/about/${id}/`, {
       method: "PUT",
       body: JSON.stringify(data),
+    }),
+  deleteAbout: (id: number) =>
+    apiRequest(`/api/about/${id}/`, {
+      method: "DELETE",
     }),
 
   // Skills
   getSkills: () => apiRequest("/api/skills/", { requiresAuth: false }),
+  getSkillsByCategory: () => apiRequest("/api/skills/by_category/", { requiresAuth: false }),
   createSkill: (data: any) =>
     apiRequest("/api/skills/", {
       method: "POST",
@@ -110,10 +131,19 @@ export const api = {
 
   // Resume
   getResume: () => apiRequest("/api/resume/", { requiresAuth: false }),
-  updateResume: (data: any) =>
+  createResume: (data: any) =>
     apiRequest("/api/resume/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateResume: (id: number, data: any) =>
+    apiRequest(`/api/resume/${id}/`, {
       method: "PUT",
       body: JSON.stringify(data),
+    }),
+  deleteResume: (id: number) =>
+    apiRequest(`/api/resume/${id}/`, {
+      method: "DELETE",
     }),
 
   // Education
@@ -152,6 +182,7 @@ export const api = {
 
   // Portfolio
   getPortfolio: () => apiRequest("/api/portfolio/", { requiresAuth: false }),
+  getFeaturedPortfolio: () => apiRequest("/api/portfolio/featured/", { requiresAuth: false }),
   createPortfolio: (data: any) =>
     apiRequest("/api/portfolio/", {
       method: "POST",
@@ -220,6 +251,10 @@ export const api = {
 
   // Contact
   getContactMessages: () => apiRequest("/api/contact/"),
+  markContactRead: (id: number) =>
+    apiRequest(`/api/contact/${id}/mark_read/`, {
+      method: "POST",
+    }),
   submitContactForm: (data: any) =>
     apiRequest("/api/contact/", {
       method: "POST",

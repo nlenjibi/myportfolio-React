@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { api } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -20,21 +21,7 @@ interface Experience {
   technologies: string
 }
 
-export function ExperienceManager() {
-  const [items, setItems] = useState<Experience[]>([
-    {
-      id: 1,
-      company: "TechCorp Inc.",
-      position: "Senior Frontend Engineer",
-      location: "San Francisco, CA",
-      start_date: "2024-01",
-      end_date: "",
-      current: true,
-      description: "Build and maintain critical frontend components",
-      technologies: "React, TypeScript, Next.js",
-    },
-  ])
-
+  const [items, setItems] = useState<Experience[]>([])
   const [formData, setFormData] = useState({
     company: "",
     position: "",
@@ -45,19 +32,34 @@ export function ExperienceManager() {
     description: "",
     technologies: "",
   })
-
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  useEffect(() => {
+    api.getExperience()
+      .then((data) => {
+        let arr = [];
+        if (Array.isArray(data)) {
+          arr = data;
+        } else if (data && Array.isArray(data.results)) {
+          arr = data.results;
+        }
+        setItems(arr);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (editingId) {
-      setItems(items.map((item) => (item.id === editingId ? { ...item, ...formData } : item)))
-      setEditingId(null)
+      const updated = await api.updateExperience(editingId, formData);
+      setItems(items.map((item) => (item.id === editingId ? updated : item)));
+      setEditingId(null);
     } else {
-      setItems([...items, { id: Date.now(), ...formData }])
+      const created = await api.createExperience(formData);
+      setItems([...items, created]);
     }
-
     setFormData({
       company: "",
       position: "",
@@ -67,25 +69,28 @@ export function ExperienceManager() {
       current: false,
       description: "",
       technologies: "",
-    })
-  }
+    });
+  };
 
   const handleEdit = (item: Experience) => {
-    setFormData(item)
-    setEditingId(item.id)
-  }
+    setFormData(item);
+    setEditingId(item.id);
+  };
 
-  const handleDelete = (id: number) => {
-    setItems(items.filter((item) => item.id !== id))
-  }
+  const handleDelete = async (id: number) => {
+    await api.deleteExperience(id);
+    setItems(items.filter((item) => item.id !== id));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const value = e.target.type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value
+    const value = e.target.type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value;
     setFormData({
       ...formData,
       [e.target.name]: value,
-    })
-  }
+    });
+  };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="space-y-6">

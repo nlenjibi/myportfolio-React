@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { api } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -20,21 +21,7 @@ interface Project {
   featured: boolean
 }
 
-export function PortfolioManager() {
-  const [projects, setProjects] = useState<Project[]>([
-    {
-      id: 1,
-      title: "E-Commerce Platform",
-      description: "A full-featured e-commerce platform",
-      image: "",
-      project_url: "https://example.com",
-      github_url: "https://github.com",
-      technologies: "Next.js, TypeScript, Stripe",
-      category: "Web App",
-      featured: true,
-    },
-  ])
-
+  const [projects, setProjects] = useState<Project[]>([])
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -45,19 +32,34 @@ export function PortfolioManager() {
     category: "",
     featured: false,
   })
-
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  useEffect(() => {
+    api.getPortfolio()
+      .then((data) => {
+        let arr = [];
+        if (Array.isArray(data)) {
+          arr = data;
+        } else if (data && Array.isArray(data.results)) {
+          arr = data.results;
+        }
+        setProjects(arr);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (editingId) {
-      setProjects(projects.map((project) => (project.id === editingId ? { ...project, ...formData } : project)))
-      setEditingId(null)
+      const updated = await api.updatePortfolio(editingId, formData);
+      setProjects(projects.map((project) => (project.id === editingId ? updated : project)));
+      setEditingId(null);
     } else {
-      setProjects([...projects, { id: Date.now(), ...formData }])
+      const created = await api.createPortfolio(formData);
+      setProjects([...projects, created]);
     }
-
     setFormData({
       title: "",
       description: "",
@@ -67,25 +69,28 @@ export function PortfolioManager() {
       technologies: "",
       category: "",
       featured: false,
-    })
-  }
+    });
+  };
 
   const handleEdit = (project: Project) => {
-    setFormData(project)
-    setEditingId(project.id)
-  }
+    setFormData(project);
+    setEditingId(project.id);
+  };
 
-  const handleDelete = (id: number) => {
-    setProjects(projects.filter((project) => project.id !== id))
-  }
+  const handleDelete = async (id: number) => {
+    await api.deletePortfolio(id);
+    setProjects(projects.filter((project) => project.id !== id));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const value = e.target.type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value
+    const value = e.target.type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value;
     setFormData({
       ...formData,
       [e.target.name]: value,
-    })
-  }
+    });
+  };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="space-y-6">

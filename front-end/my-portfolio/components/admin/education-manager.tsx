@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { api } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -19,20 +20,7 @@ interface Education {
   description: string
 }
 
-export function EducationManager() {
-  const [items, setItems] = useState<Education[]>([
-    {
-      id: 1,
-      institution: "Stanford University",
-      degree: "Master of Science",
-      field_of_study: "Computer Science",
-      start_date: "2018",
-      end_date: "2020",
-      current: false,
-      description: "Specialized in Human-Computer Interaction",
-    },
-  ])
-
+  const [items, setItems] = useState<Education[]>([])
   const [formData, setFormData] = useState({
     institution: "",
     degree: "",
@@ -42,19 +30,34 @@ export function EducationManager() {
     current: false,
     description: "",
   })
-
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  useEffect(() => {
+    api.getEducation()
+      .then((data) => {
+        let arr = [];
+        if (Array.isArray(data)) {
+          arr = data;
+        } else if (data && Array.isArray(data.results)) {
+          arr = data.results;
+        }
+        setItems(arr);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (editingId) {
-      setItems(items.map((item) => (item.id === editingId ? { ...item, ...formData } : item)))
-      setEditingId(null)
+      const updated = await api.updateEducation(editingId, formData);
+      setItems(items.map((item) => (item.id === editingId ? updated : item)));
+      setEditingId(null);
     } else {
-      setItems([...items, { id: Date.now(), ...formData }])
+      const created = await api.createEducation(formData);
+      setItems([...items, created]);
     }
-
     setFormData({
       institution: "",
       degree: "",
@@ -63,25 +66,28 @@ export function EducationManager() {
       end_date: "",
       current: false,
       description: "",
-    })
-  }
+    });
+  };
 
   const handleEdit = (item: Education) => {
-    setFormData(item)
-    setEditingId(item.id)
-  }
+    setFormData(item);
+    setEditingId(item.id);
+  };
 
-  const handleDelete = (id: number) => {
-    setItems(items.filter((item) => item.id !== id))
-  }
+  const handleDelete = async (id: number) => {
+    await api.deleteEducation(id);
+    setItems(items.filter((item) => item.id !== id));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const value = e.target.type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value
+    const value = e.target.type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value;
     setFormData({
       ...formData,
       [e.target.name]: value,
-    })
-  }
+    });
+  };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="space-y-6">

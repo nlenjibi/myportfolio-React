@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { api } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -14,47 +15,60 @@ interface Service {
   description: string
 }
 
-export function ServicesManager() {
-  const [services, setServices] = useState<Service[]>([
-    { id: 1, title: "Web Development", description: "Building responsive and performant web applications" },
-    { id: 2, title: "UI/UX Design", description: "Creating intuitive and beautiful user interfaces" },
-  ])
-
+  const [services, setServices] = useState<Service[]>([])
   const [formData, setFormData] = useState({
     title: "",
     description: "",
   })
-
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  useEffect(() => {
+    api.getServices()
+      .then((data) => {
+        let arr = [];
+        if (Array.isArray(data)) {
+          arr = data;
+        } else if (data && Array.isArray(data.results)) {
+          arr = data.results;
+        }
+        setServices(arr);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (editingId) {
-      setServices(services.map((service) => (service.id === editingId ? { ...service, ...formData } : service)))
-      setEditingId(null)
+      const updated = await api.updateService(editingId, formData);
+      setServices(services.map((service) => (service.id === editingId ? updated : service)));
+      setEditingId(null);
     } else {
-      setServices([...services, { id: Date.now(), ...formData }])
+      const created = await api.createService(formData);
+      setServices([...services, created]);
     }
-
-    setFormData({ title: "", description: "" })
-  }
+    setFormData({ title: "", description: "" });
+  };
 
   const handleEdit = (service: Service) => {
-    setFormData(service)
-    setEditingId(service.id)
-  }
+    setFormData(service);
+    setEditingId(service.id);
+  };
 
-  const handleDelete = (id: number) => {
-    setServices(services.filter((service) => service.id !== id))
-  }
+  const handleDelete = async (id: number) => {
+    await api.deleteService(id);
+    setServices(services.filter((service) => service.id !== id));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
-    })
-  }
+    });
+  };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="space-y-6">

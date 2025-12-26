@@ -1,31 +1,59 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { api } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-export function ResumeManager() {
+
   const [formData, setFormData] = useState({
-    title: "Full Resume 2024",
+    title: "",
     file_url: "",
-    description: "Download my complete resume to learn more about my experience, education, and skills.",
+    description: "",
   })
+  const [resumeId, setResumeId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.getResume()
+      .then((data) => {
+        let resumeArr = [];
+        if (Array.isArray(data) && data.length > 0) {
+          resumeArr = data;
+        } else if (data && Array.isArray(data.results) && data.results.length > 0) {
+          resumeArr = data.results;
+        }
+        if (resumeArr.length > 0) {
+          setFormData(resumeArr[0]);
+          setResumeId(resumeArr[0].id);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log("[v0] Resume updated:", formData)
-    alert("Resume updated successfully!")
-  }
+    e.preventDefault();
+    if (resumeId) {
+      await api.updateResume(resumeId, formData);
+    } else {
+      const created = await api.createResume(formData);
+      setResumeId(created.id);
+    }
+    alert("Resume updated successfully!");
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
-    })
-  }
+    });
+  };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="space-y-6">
